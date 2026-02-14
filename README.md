@@ -85,3 +85,7 @@ src/
 ```
 
 Data: `./data/<subreddit>/` (Parquet)
+
+## TODO:
+
+- Add web viewing for data using React + FastAPI, Flask, and Dioxus.

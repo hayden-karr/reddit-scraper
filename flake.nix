@@ -1,5 +1,5 @@
 {
-  description = "Reddit Scraper - Nix shell with AVIF support";
+  description = "Reddit Scraper - Nix devenv";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -27,74 +27,54 @@
             libaom
             dav1d
             rav1e
-            nasm # Required for rav1e assembly optimizations
+            nasm # Required for rav1e assembly
 
-            # Build dependencies for Python extensions
+            # Build dependencies for Python extensions and Rust
             pkg-config
             cmake
             ninja
             gcc
 
-            # Development headers (sometimes needed)
+            # Development headers
             libavif.dev
             libaom.dev
 
             # FFmpeg with full codec support
             ffmpeg-full
 
-            # Other useful tools
+            # Tools
             git
           ];
 
-          # Comprehensive environment setup
           shellHook = ''
-            # Library paths for both build and runtime
-            export PKG_CONFIG_PATH="${pkgs.libavif}/lib/pkgconfig:${pkgs.libaom}/lib/pkgconfig:${pkgs.dav1d}/lib/pkgconfig:${pkgs.rav1e}/lib/pkgconfig:$PKG_CONFIG_PATH"
-            export LD_LIBRARY_PATH="${pkgs.libavif}/lib:${pkgs.libaom}/lib:${pkgs.dav1d}/lib:${pkgs.rav1e}/lib:$LD_LIBRARY_PATH"
-            export LIBRARY_PATH="${pkgs.libavif}/lib:${pkgs.libaom}/lib:${pkgs.dav1d}/lib:${pkgs.rav1e}/lib:$LIBRARY_PATH"
-
-            # Header paths for compilation
-            export CPATH="${pkgs.libavif}/include:${pkgs.libaom}/include:${pkgs.dav1d}/include:$CPATH"
-            export C_INCLUDE_PATH="$CPATH"
-            export CPLUS_INCLUDE_PATH="$CPATH"
-
-            # Ensure pip/uv can find system libraries when building extensions
-            export CMAKE_PREFIX_PATH="${pkgs.libavif}:${pkgs.libaom}:${pkgs.dav1d}:${pkgs.rav1e}:$CMAKE_PREFIX_PATH"
-
             echo "Reddit Scraper Dev Shell"
-            echo "System AVIF libraries:"
-            echo "FFmpeg AVIF support: $(ffmpeg -hide_banner -encoders 2>/dev/null | grep -i avif | wc -l) encoders"
-            echo ""
-            echo "Setup commands:"
-            echo "1. uv venv"
-            echo "2. source .venv/bin/activate"
-            echo "3. uv pip install --force-reinstall --no-binary=pillow-avif-plugin pillow pillow-avif-plugin"
-            echo "4. python -c 'import pillow_avif; print(\"AVIF OK\")'"
           '';
         };
 
-        # Docker image with proper AVIF support
+        # Docker image
         packages.docker = pkgs.dockerTools.buildImage {
           name = "reddit-scraper";
           tag = "latest";
 
-          contents = with pkgs; [
-            python313
-            libavif
-            libaom
-            dav1d
-            rav1e
-            ffmpeg-full
-            bash
-            coreutils
-            findutils
-          ];
+          copyToRoot = pkgs.buildEnv {
+            name = "image-root";
+            paths = with pkgs; [
+              python313
+              libavif
+              libaom
+              dav1d
+              rav1e
+              ffmpeg-full
+              bash
+              coreutils
+              findutils
+            ];
+            pathsToLink = [ "/bin" ];
+          };
 
           config = {
             Env = [
-              "PKG_CONFIG_PATH=${pkgs.libavif}/lib/pkgconfig:${pkgs.libaom}/lib/pkgconfig"
               "LD_LIBRARY_PATH=${pkgs.libavif}/lib:${pkgs.libaom}/lib:${pkgs.dav1d}/lib:${pkgs.rav1e}/lib"
-              "LIBRARY_PATH=${pkgs.libavif}/lib:${pkgs.libaom}/lib:${pkgs.dav1d}/lib:${pkgs.rav1e}/lib"
             ];
             WorkingDir = "/app";
             Cmd = [ "${pkgs.python313}/bin/python" "-m" "reddit_scraper.cli" ];
