@@ -1,0 +1,12 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rust-media-engine"
+requires-python = ">=3.8"
+dynamic = ["version"]
+description = "Rust-powered media processing for Reddit scraper"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]

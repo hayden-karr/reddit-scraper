@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reddit-scraper-2"
+version = "0.1.0"
+description = "Modern Reddit scraper with optional Rust-powered media processing"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+keywords = ["reddit", "scraper", "praw", "media", "avif", "rust"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+]
+dependencies = [
+  "click>=8.2.1",
+  "python-dotenv>=1.0.0",
+  "maturin>=1.9.4",
+  "pillow>=11.3.0",
+  "pillow-avif-plugin>=1.5.2",
+  "polars>=1.32.3",
+  "praw>=7.8.1",
+  "requests>=2.31.0",
+  "urllib3>=2.0.0",
+]
+
+[tool.uv]
+package = true
+
+[tool.setuptools]
+packages = ["reddit_scraper"]
+package-dir = {"" = "src"}
+
+[project.scripts]
+reddit-scraper = "reddit_scraper.cli:main"
+
+[project.optional-dependencies]
+rust = ["maturin"] # For building the Rust extension
+web = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.32.0",
+  "flask>=3.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "maturin>=1.0,<2.0",
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.23.0",
+  "ruff>=0.1.0",
+  "types-requests>=2.31.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
