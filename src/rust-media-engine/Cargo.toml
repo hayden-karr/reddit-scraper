@@ -41,3 +41,9 @@ env_logger = "0.11"
 
 # Retry logic
 tokio-retry = "0.3"
+
+# XML parsing for DASH manifests
+roxmltree = "0.21.1"
+
+# URL joining for DASH base URLs
+url = "2.5.8"

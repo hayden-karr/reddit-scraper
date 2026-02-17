@@ -173,7 +173,12 @@ class VideoHandler(BaseMediaHandler):
                 base_path = parsed.path.split("DASH_")[0]
                 base_url = f"{parsed.scheme}://{parsed.netloc}{base_path}"
 
-                for audio_format in ["DASH_audio.mp4", "DASH_128.mp4"]:
+                for audio_format in [
+                    "DASH_audio.mp4",
+                    "DASH_AUDIO_128.mp4",
+                    "DASH_128.mp4",
+                    "audio",
+                ]:
                     audio_url = f"{base_url}{audio_format}"
                     if await self._url_exists(audio_url):
                         self.logger.debug(f"Found audio stream: {audio_url}")
@@ -304,7 +309,7 @@ class VideoHandler(BaseMediaHandler):
             max_concurrent = MediaConfig.MAX_CONCURRENT_VIDEOS
 
         result = await self.batch_process_with_progress(
-            url_id_pairs, self.download_and_process, max_concurrent, "Processing videos"
+            url_id_pairs, self.download_and_process, max_concurrent
         )
 
         return result.to_dict()

@@ -191,7 +191,7 @@ class ImgurHandler(BaseMediaHandler):
             max_concurrent = MediaConfig.MAX_CONCURRENT_IMGUR
 
         result = await self.batch_process_with_progress(
-            url_id_pairs, self.download_media, max_concurrent, "Processing imgur"
+            url_id_pairs, self.download_media, max_concurrent
         )
 
         return result.to_dict()

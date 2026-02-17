@@ -4,9 +4,16 @@ build-backend = "maturin"
 
 [project]
 name = "rust-media-engine"
-requires-python = ">=3.8"
+requires-python = ">=3.13"
 dynamic = ["version"]
 description = "Rust-powered media processing for Reddit scraper"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "**/*.rs" },
+]

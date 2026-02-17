@@ -127,7 +127,7 @@ class ImageHandler(BaseMediaHandler):
             max_concurrent = MediaConfig.MAX_CONCURRENT_IMAGES
 
         result = await self.batch_process_with_progress(
-            url_id_pairs, self.download_and_convert, max_concurrent, "Converting images"
+            url_id_pairs, self.download_and_convert, max_concurrent
         )
 
         return result.to_dict()

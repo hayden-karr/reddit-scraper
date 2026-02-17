@@ -28,12 +28,24 @@ cp .env.example .env
 # Edit .env with your Reddit API credentials
 ```
 
-### Optional: Rust Engine
+### Rust Engine
+
+The Rust media engine is a uv workspace member. `uv sync` builds it automatically:
+
+```bash
+uv sync
+```
+
+The workspace is configured with `cache-keys` on `Cargo.toml` and `**/*.rs`, so `uv sync` will rebuild whenever Rust source files change.
+
+For faster debug builds during development, you can use maturin directly:
 
 ```bash
 cd src/rust-media-engine
-maturin develop --release
+maturin develop --uv
 ```
+
+Note: `uv sync` builds in release mode (optimized). `maturin develop` builds in debug mode (faster compile, slower runtime). Either approach installs into the same project `.venv`.
 
 ## Usage
 

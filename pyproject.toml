@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "reddit-scraper-2"
+name = "reddit-scraper"
 version = "0.1.0"
 description = "Modern Reddit scraper with optional Rust-powered media processing"
 readme = "README.md"
@@ -22,7 +22,7 @@ classifiers = [
 dependencies = [
   "click>=8.2.1",
   "python-dotenv>=1.0.0",
-  "maturin>=1.9.4",
+  "rust-media-engine",
   "pillow>=11.3.0",
   "pillow-avif-plugin>=1.5.2",
   "polars>=1.32.3",
@@ -34,6 +34,12 @@ dependencies = [
 [tool.uv]
 package = true
 
+[tool.uv.workspace]
+members = ["src/rust-media-engine"]
+
+[tool.uv.sources]
+rust-media-engine = { workspace = true }
+
 [tool.setuptools]
 packages = ["reddit_scraper"]
 package-dir = {"" = "src"}
@@ -42,7 +48,6 @@ package-dir = {"" = "src"}
 reddit-scraper = "reddit_scraper.cli:main"
 
 [project.optional-dependencies]
-rust = ["maturin"] # For building the Rust extension
 web = [
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.32.0",
@@ -51,7 +56,6 @@ web = [
 
 [dependency-groups]
 dev = [
-  "maturin>=1.0,<2.0",
   "pytest>=8.0.0",
   "pytest-asyncio>=0.23.0",
   "ruff>=0.1.0",

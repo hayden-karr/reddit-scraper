@@ -1,7 +1,6 @@
 use pyo3::prelude::*;
 use pyo3_async_runtimes::tokio::future_into_py;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::fs;
 use tokio_retry::Retry;
 use tokio_retry::strategy::{ExponentialBackoff, jitter};
@@ -181,7 +180,75 @@ async fn process_single_media(client: reqwest::Client, task: MediaTask) -> Media
         }
     }
 
-    // Download to memory with retry logic
+    // For v.redd.it videos, use DASH manifest parsing (same as Python path)
+    if task.media_type == "video" && task.url.contains("v.redd.it") {
+        log::debug!("Processing v.redd.it video {} via DASH", task.item_id);
+
+        let webm_path = format!(
+            "{}.webm",
+            task.output_path
+                .trim_end_matches(".webm")
+                .trim_end_matches(".mp4")
+        );
+
+        // Use the same stream discovery as Python: DASH manifest first, then fallback
+        let streams = video::get_best_streams(&client, &task.url).await;
+
+        let video_stream = match streams.video_url {
+            Some(url) => {
+                log::info!("Found video stream for {}: {}", task.item_id, url);
+                url
+            }
+            None => {
+                return MediaResult {
+                    success: false,
+                    item_id: task.item_id,
+                    output_path: None,
+                    original_size: 0,
+                    converted_size: 0,
+                    error: Some("No video stream found".to_string()),
+                };
+            }
+        };
+
+        if let Some(ref audio) = streams.audio_url {
+            log::info!("Found audio stream for {}: {}", task.item_id, audio);
+        } else {
+            log::info!("No audio stream for {}", task.item_id);
+        }
+
+        match video::process_video_streams(video_stream, streams.audio_url, webm_path).await {
+            Ok(conv_result) => {
+                if conv_result.success {
+                    log::info!(
+                        "Successfully processed {}: {} bytes",
+                        task.item_id,
+                        conv_result.converted_size
+                    );
+                }
+                return MediaResult {
+                    success: conv_result.success,
+                    item_id: task.item_id,
+                    output_path: conv_result.output_path,
+                    original_size: 0,
+                    converted_size: conv_result.converted_size,
+                    error: conv_result.error,
+                };
+            }
+            Err(e) => {
+                return MediaResult {
+                    success: false,
+                    item_id: task.item_id,
+                    output_path: None,
+                    original_size: 0,
+                    converted_size: 0,
+                    error: Some(format!("Video processing failed: {}", e)),
+                };
+            }
+        }
+    }
+
+    // Download to memory with retry logic (for non-v.redd.it media)
     let retry_strategy = ExponentialBackoff::from_millis(500).map(jitter).take(3); // 3 retries with exponential backoff
 
     let download_client = client.clone();
@@ -255,106 +322,24 @@ async fn process_single_media(client: reqwest::Client, task: MediaTask) -> Media
             gifs::convert_bytes_to_webm(bytes.to_vec(), webm_path).await
         }
         "video" => {
-            // Check if this is a v.redd.it video that needs quality selection
-            log::debug!("Processing video {} from {}", task.item_id, task.url);
-            if task.url.contains("v.redd.it") {
-                // Try direct quality URLs
-                let qualities = vec![
-                    "DASH_1080.mp4",
-                    "DASH_720.mp4",
-                    "DASH_480.mp4",
-                    "DASH_360.mp4",
-                ];
-                let base_url = task.url.trim_end_matches('/');
-                let webm_path = format!(
-                    "{}.webm",
-                    task.output_path
-                        .trim_end_matches(".webm")
-                        .trim_end_matches(".mp4")
-                );
-
-                let mut last_error = String::new();
-                for quality in qualities {
-                    let quality_url = format!("{}/{}", base_url, quality);
-                    log::debug!("Trying quality: {} for {}", quality, task.item_id);
-
-                    if let Ok(resp) = client.head(&quality_url).send().await {
-                        if resp.status().is_success() {
-                            log::info!("Found video quality {} for {}", quality, task.item_id);
-
-                            // Check for audio stream
-                            let audio_url = format!("{}/DASH_audio.mp4", base_url);
-                            let audio_stream =
-                                if let Ok(audio_resp) = client.head(&audio_url).send().await {
-                                    if audio_resp.status().is_success() {
-                                        log::info!("Found audio stream for {}", task.item_id);
-                                        Some(audio_url)
-                                    } else {
-                                        log::debug!("No audio stream for {}", task.item_id);
-                                        None
-                                    }
-                                } else {
-                                    None
-                                };
-
-                            // Use FFmpeg to convert to webm (with audio if available)
-                            log::debug!("Processing video {} with FFmpeg", task.item_id);
-                            match video::process_video_streams(
-                                quality_url,
-                                audio_stream,
-                                webm_path.clone(),
-                            )
-                            .await
-                            {
-                                Ok(conv_result) => {
-                                    return MediaResult {
-                                        success: conv_result.success,
-                                        item_id: task.item_id,
-                                        output_path: conv_result.output_path,
-                                        original_size,
-                                        converted_size: conv_result.converted_size,
-                                        error: conv_result.error,
-                                    };
-                                }
-                                Err(e) => {
-                                    last_error = format!("{}", e);
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // If all quality attempts failed
-                Ok(media::ConversionResult {
+            // v.redd.it videos are handled above before the download step.
+            // This branch handles direct video downloads (non-Reddit streams).
+            let mp4_path = format!("{}.mp4", task.output_path.trim_end_matches(".mp4"));
+            match fs::write(&mp4_path, &bytes).await {
+                Ok(_) => Ok(media::ConversionResult {
+                    success: true,
+                    output_path: Some(mp4_path),
+                    original_size,
+                    converted_size: bytes.len() as u64,
+                    error: None,
+                }),
+                Err(e) => Ok(media::ConversionResult {
                     success: false,
                     output_path: None,
                     original_size,
                     converted_size: 0,
-                    error: Some(format!(
-                        "Failed to download v.redd.it video: {}",
-                        last_error
-                    )),
-                })
-            } else {
-                // For direct video downloads (not Reddit streams)
-                let mp4_path = format!("{}.mp4", task.output_path.trim_end_matches(".mp4"));
-                match fs::write(&mp4_path, &bytes).await {
-                    Ok(_) => Ok(media::ConversionResult {
-                        success: true,
-                        output_path: Some(mp4_path),
-                        original_size,
-                        converted_size: bytes.len() as u64,
-                        error: None,
-                    }),
-                    Err(e) => Ok(media::ConversionResult {
-                        success: false,
-                        output_path: None,
-                        original_size,
-                        converted_size: 0,
-                        error: Some(format!("Failed to write video: {}", e)),
-                    }),
-                }
+                    error: Some(format!("Failed to write video: {}", e)),
+                }),
             }
         }
         _ => Ok(media::ConversionResult {

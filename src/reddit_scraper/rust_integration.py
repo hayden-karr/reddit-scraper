@@ -113,24 +113,11 @@ class RustMediaProcessor:
         regular_tasks: List[Any] = []
 
         # Process posts
+        # Use post.url as primary source, matching Python MediaCollector behavior.
+        # post.video_url contains the Reddit API fallback_url which has CMAF paths
+        # and query params that break DASH manifest discovery.
         for post in posts:
-            # Check specific media fields first (with validation)
-            if hasattr(post, "video_url") and post.video_url and self._is_media_url(post.video_url):
-                task = self._create_media_task(post.video_url, post.id)
-                if task:
-                    regular_tasks.append(task)
-            elif hasattr(post, "gif_url") and post.gif_url and self._is_media_url(post.gif_url):
-                task = self._create_media_task(post.gif_url, post.id)
-                if task:
-                    regular_tasks.append(task)
-            elif (
-                hasattr(post, "image_url") and post.image_url and self._is_media_url(post.image_url)
-            ):
-                task = self._create_media_task(post.image_url, post.id)
-                if task:
-                    regular_tasks.append(task)
-            elif post.url and self._is_media_url(post.url):
-                # Fallback to generic URL
+            if post.url and self._is_media_url(post.url):
                 task = self._create_media_task(post.url, post.id)
                 if task:
                     regular_tasks.append(task)
