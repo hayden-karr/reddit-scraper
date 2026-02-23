@@ -28,6 +28,12 @@ cp .env.example .env
 # Edit .env with your Reddit API credentials
 ```
 
+### Web Viewer
+
+```bash
+uv sync --extra web
+```
+
 ### Rust Engine
 
 The Rust media engine is a uv workspace member. `uv sync` builds it automatically:

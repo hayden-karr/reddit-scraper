@@ -34,6 +34,20 @@
             cmake
             ninja
             gcc
+            openssl
+            openssl.dev
+
+            # Dioxus desktop (WebKitGTK) dependencies
+            glib
+            gtk3
+            webkitgtk_4_1
+            libsoup_3
+            atk
+            cairo
+            gdk-pixbuf
+            pango
+            harfbuzz
+            xdotool
 
             # Development headers
             libavif.dev
