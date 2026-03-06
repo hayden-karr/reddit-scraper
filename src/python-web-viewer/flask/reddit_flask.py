@@ -130,7 +130,10 @@ class RedditDataManager:
     ) -> List[Dict]:
         """Format comments and their replies recursively."""
         if is_post:
-            replies = comments.filter(pl.col("post_id") == post_id)
+            # Polars requires == True (not `is True` or bare col), hence noqa
+            replies = comments.filter(
+                (pl.col("post_id") == post_id) & (pl.col("is_root") == True)  # noqa: E712
+            )
         else:
             replies = comments.filter(pl.col("parent_id") == post_id)
 

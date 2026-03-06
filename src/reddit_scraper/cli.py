@@ -38,7 +38,7 @@ def main(ctx, verbose):
 
 
 @main.command()
-@click.argument("subreddit")
+@click.argument("subreddit", required=False, default=None)
 @click.option("-p", "--posts", default=100, help="Number of posts to scrape")
 @click.option(
     "-c",
@@ -64,6 +64,7 @@ def main(ctx, verbose):
     metavar="FILTER",
     help="Time filter for top sort: hour, day, week, month, year, all",
 )
+@click.option("--url", default=None, help="Scrape a single post by its Reddit URL")
 @click.option("--no-media", is_flag=True, help="Skip media download")
 @click.option(
     "--use-rust",
@@ -76,20 +77,34 @@ def scrape(
     comments: int,
     sort: str,
     time_filter: str,
+    url: str,
     no_media: bool,
     use_rust: bool,
 ):
-    """Scrape a subreddit for posts and comments."""
-    try:
-        # Initialize components
-        print(f"Initializing scraper for r/{subreddit}")
-        scraper = RedditScraper(subreddit)
-        storage = DataStorage(subreddit)
+    """Scrape a subreddit for posts and comments.
 
-        # Scrape data
-        scraped_posts, scraped_comments = scraper.scrape_subreddit(
-            post_limit=posts, comment_limit=comments, sort=sort, time_filter=time_filter
-        )
+    With --url, scrapes a single post instead of the whole subreddit.
+    """
+    try:
+        if url:
+            if not subreddit:
+                subreddit = RedditScraper.extract_subreddit_from_url(url)
+            print(f"Initializing scraper for r/{subreddit}")
+            scraper = RedditScraper(subreddit)
+            storage = DataStorage(subreddit)
+            scraped_posts, scraped_comments = scraper.scrape_post_by_url(
+                url, comment_limit=comments
+            )
+        elif subreddit:
+            print(f"Initializing scraper for r/{subreddit}")
+            scraper = RedditScraper(subreddit)
+            storage = DataStorage(subreddit)
+            scraped_posts, scraped_comments = scraper.scrape_subreddit(
+                post_limit=posts, comment_limit=comments, sort=sort, time_filter=time_filter
+            )
+        else:
+            click.echo("Error: provide a SUBREDDIT argument or use --url", err=True)
+            raise click.Abort()
 
         # Handle media collection
         if not no_media and scraped_posts:

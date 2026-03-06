@@ -2,6 +2,7 @@
 Simple PRAW-based Reddit scraper.
 """
 
+import re
 from typing import List, Optional
 
 import praw
@@ -278,6 +279,37 @@ class RedditScraper:
                 break  # Reached the submission
 
         return depth
+
+    def scrape_post_by_url(
+        self, url: str, comment_limit: Optional[int] = None
+    ) -> tuple[List[RedditPost], List[RedditComment]]:
+        """Scrape a single post by its Reddit URL."""
+        print(f"Fetching post from URL: {url}")
+
+        try:
+            submission = self.reddit.submission(url=url)
+            post = self._submission_to_post(submission)
+            print(f"Found post: {post.title}")
+        except Exception as e:
+            raise ValueError(f"Failed to fetch post from URL: {e}")
+
+        comments = []
+        if comment_limit != 0:
+            comments = self.scrape_comments([post.id], comment_limit)
+
+        print(f"Scrape complete: 1 post, {len(comments)} comments")
+        return [post], comments
+
+    @staticmethod
+    def extract_subreddit_from_url(url: str) -> str:
+        """Extract the subreddit name from a Reddit URL."""
+        match = re.search(r"/r/([^/]+)", url)
+        if match:
+            return match.group(1)
+        raise ValueError(
+            f"Could not extract subreddit from URL: {url}\n"
+            "Expected format: https://www.reddit.com/r/SUBREDDIT/comments/..."
+        )
 
     def scrape_subreddit(
         self,
